@@ -4,6 +4,9 @@
 # Ignore Gradle build output directory
 build
 
+# ignore .vscode
+*.vscode
+
 # Compiled class file
 *.class
 
