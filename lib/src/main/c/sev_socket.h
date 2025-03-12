@@ -1,14 +1,25 @@
 #ifndef SEV_SOCKET_H_
 #define SEV_SOCKET_H_
 
-#include <jni.h>
 #include <sys/socket.h>
 
-int sev_socket(int domain, int type, int protocol);
+// call traditional socket functions, but return -errno instead
+// of -1 on error, avoid need to capture errno via FFM
 
-int sev_socket_initAddr(JNIEnv *env, jbyteArray address, jint port,
-    struct sockaddr_in *addr, socklen_t *addrSize);
+int sev_socket_streamSocket(int domain, int type, int protocol);
 
-jint sev_socket_JNI_OnLoad(JNIEnv *env);
+int sev_socket_bind(int fd, const struct sockaddr *addr, socklen_t len);
+
+int sev_socket_listen(int fd, int backlog);
+
+int sev_socket_connect(int fd, const struct sockaddr *addr, socklen_t len);
+
+int sev_socket_shutdown(int fd, bool read, bool write);
+
+int sev_socket_close(int fd);
+
+int sev_socket_getSockOpt(int fd, int level, int optname);
+
+int sev_socket_setSockOpt(int fd, int level, int optname, int optval);
 
 #endif

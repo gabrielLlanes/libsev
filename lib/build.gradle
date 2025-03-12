@@ -18,8 +18,10 @@ repositories {
 }
 
 dependencies {
-    // Use JUnit test framework.
-    testImplementation libs.junit
+    // Use JUnit Jupiter for testing.
+    testImplementation libs.junit.jupiter
+
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // This dependency is exported to consumers, that is to say found on their compile classpath.
     api libs.commons.math3
@@ -31,7 +33,7 @@ dependencies {
 // Apply a specific Java toolchain to ease working on different environments.
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(23)
     }
 }
 
@@ -42,13 +44,13 @@ model {
         }
     }
     components {
-        sev_uring(NativeLibrarySpec) {
+        sevloop(NativeLibrarySpec) {
             targetPlatform "x64"
             binaries {
                 all {
                     cCompiler.args '-I', "${System.getenv('JAVA_HOME')}/include"
                     cCompiler.args '-I', "${System.getenv('JAVA_HOME')}/include/linux"
-                    cCompiler.args "-luring"
+                    linker.args "-luring"
                 }
             }
             sources {
@@ -64,10 +66,14 @@ model {
 }
 
 test {
-    //Provider<Directory> output = layout.buildDirectory.dir("libs/sev_uring/shared")
-    systemProperty "java.library.path", file("${buildDir}/libs/sev_uring/shared").absolutePath
+    systemProperty "java.library.path", file("${buildDir}/libs/sevloop/shared").absolutePath
     maxParallelForks = 1
 }
 
-build.dependsOn("sev_uringSharedLibrary")
-test.dependsOn("sev_uringSharedLibrary")
+tasks.named('test') {
+    // Use JUnit Platform for unit tests.
+    useJUnitPlatform()
+}
+
+build.dependsOn("sevloopSharedLibrary")
+test.dependsOn("sevloopSharedLibrary")

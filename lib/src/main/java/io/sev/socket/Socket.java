@@ -1,25 +1,55 @@
 package io.sev.socket;
 
-import java.io.IOException;
-import java.net.Inet4Address;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SymbolLookup;
+import java.lang.invoke.MethodHandle;
+
+import static java.lang.foreign.ValueLayout.JAVA_BOOLEAN;
+import static java.lang.foreign.ValueLayout.JAVA_INT;
+import static java.lang.foreign.ValueLayout.ADDRESS;
+
+import static io.sev.util.errors.UnixException.unixException;
 
 import io.sev.Native;
 
 public class Socket {
 
     public static final int SOL_SOCKET = 1;
-
-    public static final int IPPROTO_TCP = 6;
-
     public static final int SO_REUSEADDR = 2;
-    
     public static final int SO_KEEPALIVE = 9;
-
     public static final int SO_REUSEPORT = 15;
 
+    public static final int IPPROTO_TCP = 6;
     public static final int TCP_NODELAY = 1;
-
     public static final int TCP_CORK = 3;
+
+    public static final int SOCK_CLOEXEC = 02000000;
+    public static final int SOCK_NONBLOCK = 00004000;
+
+    public static final int SOCK_STREAM = 1;
+    public static final int SOCK_DGRAM = 2;
+
+    public static final int SHUT_RD = 0;
+    public static final int SHUT_WR = 1;
+    public static final int SHUT_RDWR = 2;
+
+    private static final MethodHandle socketHandle;
+
+    private static final MethodHandle bindHandle;
+
+    private static final MethodHandle listenHandle;
+
+    private static final MethodHandle connectHandle;
+
+    private static final MethodHandle shutdownSocketHandle;
+
+    private static final MethodHandle closeHandle;
+
+    private static final MethodHandle getSockOptHandle;
+
+    private static final MethodHandle setSockOptHandle;
 
     static {
         try {
@@ -27,82 +57,109 @@ public class Socket {
         } catch(ClassNotFoundException e) {
             throw new RuntimeException("could not load Native");
         }
+        Linker linker = Linker.nativeLinker();
+        SymbolLookup lookup = SymbolLookup.loaderLookup();
+
+        MemorySegment socketSegment = lookup.findOrThrow("sev_socket_streamSocket");
+        FunctionDescriptor socketDescriptor = FunctionDescriptor.of(JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT);
+        socketHandle = linker.downcallHandle(socketSegment, socketDescriptor);
+
+        MemorySegment bindSegment = lookup.findOrThrow("sev_socket_bind");
+        FunctionDescriptor bindDescriptor = FunctionDescriptor.of(JAVA_INT, JAVA_INT, ADDRESS, JAVA_INT);
+        bindHandle = linker.downcallHandle(bindSegment, bindDescriptor);
+
+        MemorySegment listenSegment = lookup.findOrThrow("sev_socket_listen");
+        FunctionDescriptor listenDescriptor = FunctionDescriptor.of(JAVA_INT, JAVA_INT, JAVA_INT);
+        listenHandle = linker.downcallHandle(listenSegment, listenDescriptor);
+
+        MemorySegment connectSegment = lookup.findOrThrow("sev_socket_connect");
+        FunctionDescriptor connectDescriptor = FunctionDescriptor.of(JAVA_INT, JAVA_INT, ADDRESS, JAVA_INT);
+        connectHandle = linker.downcallHandle(connectSegment, connectDescriptor);
+
+        MemorySegment shutdownSocketSegment = lookup.findOrThrow("sev_socket_shutdown");
+        FunctionDescriptor shutdownSocketDescriptor = FunctionDescriptor.of(JAVA_INT, JAVA_INT, JAVA_BOOLEAN, JAVA_BOOLEAN);
+        shutdownSocketHandle = linker.downcallHandle(shutdownSocketSegment, shutdownSocketDescriptor);
+
+        MemorySegment closeSegment = lookup.findOrThrow("sev_socket_close");
+        FunctionDescriptor closeDescriptor = FunctionDescriptor.of(JAVA_INT, JAVA_INT);
+        closeHandle = linker.downcallHandle(closeSegment, closeDescriptor);
+
+        MemorySegment getSockOptSegment = lookup.findOrThrow("sev_socket_getSockOpt");
+        FunctionDescriptor getSockOptDescriptor = FunctionDescriptor.of(JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT);
+        getSockOptHandle = linker.downcallHandle(getSockOptSegment, getSockOptDescriptor);
+
+        MemorySegment setSockOptSegment = lookup.findOrThrow("sev_socket_setSockOpt");
+        FunctionDescriptor setSockOptDescriptor = FunctionDescriptor.of(JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT);
+        setSockOptHandle = linker.downcallHandle(setSockOptSegment, setSockOptDescriptor);
     }
 
-    public static int newStreamSocket(boolean sockCloExec, boolean sockNonblock) throws IOException {
-        int res = newStreamSocketFd(sockCloExec, sockNonblock);
+    public static int socket(int domain, int type, int protocol) throws Throwable {
+        int res = (int) socketHandle.invokeExact(domain, type, protocol);
         if(res < 0) {
-            Errors.ioException(res);
+            unixException(res);
         }
         return res;
     }
 
-    public static void bind(int fd, Inet4Address address, int port) throws IOException {
-        byte[] addressBytes = address.getAddress();
-        int res = bind0(fd, addressBytes, port);
+    public static void bind(int fd, MemorySegment addr, int len) throws Throwable {
+        int res = (int) bindHandle.invokeExact(fd, addr, len);
         if(res < 0) {
-            Errors.ioException(res);
+            unixException(res);
         }
     }
 
-    public static void listen(int fd, int backlog) throws IOException {
-        int res = listen0(fd, backlog);
+    public static void closeStrict(int fd) throws Throwable {
+        int res = (int) closeHandle.invokeExact(fd);
         if(res < 0) {
-            Errors.ioException(res);
+            unixException(res);
         }
     }
 
-    public static void setSockOpt(int fd, int level, int optname, int optval) throws IOException {
-        int res = setSockOpt0(fd, level, optname, optval);
-        if(res < 0) {
-            Errors.ioException(res);
+    public static void close(int fd) {
+        try {
+            closeHandle.invokeExact(fd);
+        } catch(Throwable t) {
+
         }
     }
 
-    public static int getSockOpt(int fd, int level, int optname) throws IOException {
-        int res = getSockOpt0(fd, level, optname);
+    public static void listen(int fd, int backlog) throws Throwable {
+        int res = (int) listenHandle.invokeExact(fd, backlog);
         if(res < 0) {
-            Errors.ioException(res);
+            unixException(res);
+        }
+    }
+
+    public static void connect(int fd, MemorySegment addr, int len) throws Throwable {
+        int res = (int) connectHandle.invokeExact(fd, addr, len);
+        if(res < 0) {
+            unixException(res);
+        }
+    }
+
+    public static void shutdownSocket(int fd, boolean read, boolean write) throws Throwable {
+        int res = (int) shutdownSocketHandle.invokeExact(fd, read, write);
+        if(res < 0) {
+            unixException(res);
+        }
+    }
+
+    public static void shutdownSocket(int fd) throws Throwable {
+        shutdownSocket(fd, true, true);
+    }
+
+    public static void setSockOpt(int fd, int level, int optname, int optval) throws Throwable {
+        int res = (int) setSockOptHandle.invokeExact(fd, level, optname, optval);
+        if(res < 0) {
+            unixException(res);
+        }
+    }
+
+    public static int getSockOpt(int fd, int level, int optname) throws Throwable {
+        int res = (int) getSockOptHandle.invokeExact(fd, level, optname);
+        if(res < 0) {
+            unixException(res);
         }
         return res;
     }
-
-    public static void connect(int fd, Inet4Address address, int port) throws IOException {
-        byte[] addressBytes = address.getAddress();
-        int res = connect0(fd, addressBytes, port);
-        if(res < 0) {
-            Errors.ioException(res);
-        }
-    }
-
-    public static void shutdown(int fd, boolean read, boolean write) throws IOException {
-        int res = shutdown0(fd, read, write);
-        if(res < 0) {
-            Errors.ioException(res);
-        }
-    }
-
-    public static void close(int fd) throws IOException {
-        int res = close0(fd);
-        if(res < 0) {
-            Errors.ioException(res);
-        }
-    }
-    
-    private static native int newStreamSocketFd(boolean sockCloExec, boolean sockNonblock);
-
-    private static native int bind0(int fd, byte[] address, int port);
-
-    private static native int listen0(int fd, int backlog);
-
-    private static native int connect0(int fd, byte[] address, int port);
-
-    private static native int shutdown0(int fd, boolean read, boolean write);
-
-    private static native int close0(int fd);
-
-    private static native int getSockOpt0(int fd, int level, int optname);
-
-    private static native int setSockOpt0(int fd, int level, int optname, int optval);
-
 }

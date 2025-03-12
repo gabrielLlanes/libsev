@@ -4,7 +4,7 @@ public class Native {
 
     //load library once
     static {
-        System.loadLibrary("sev_uring");
+        System.loadLibrary("sevloop");
     }
 
 }
