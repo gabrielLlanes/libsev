@@ -9,7 +9,7 @@ import static java.lang.foreign.MemoryLayout.structLayout;
 
 public class IoUringCQE {
 
-    static final StructLayout IO_URING_CQE_LAYOUT = structLayout(JAVA_LONG, JAVA_INT, JAVA_INT);
+    public static final StructLayout IO_URING_CQE_LAYOUT = structLayout(JAVA_LONG, JAVA_INT, JAVA_INT);
 
     public static final int CQE_SIZE = 16;
 

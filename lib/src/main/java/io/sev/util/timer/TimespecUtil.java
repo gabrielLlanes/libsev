@@ -9,13 +9,21 @@ import java.lang.foreign.SegmentAllocator;
 
 public class TimespecUtil {
 
-    private static final MemoryLayout KERNEL_TIMESPEC_LAYOUT = structLayout(JAVA_LONG, JAVA_LONG);
+    public static final MemoryLayout TIMESPEC_LAYOUT = structLayout(JAVA_LONG, JAVA_LONG);
 
     public static MemorySegment timespec(long tv_sec, long tv_nsec, SegmentAllocator allocator) {
-        MemorySegment timespec = allocator.allocate(KERNEL_TIMESPEC_LAYOUT);
+        MemorySegment timespec = allocator.allocate(TIMESPEC_LAYOUT);
         timespec.setAtIndex(JAVA_LONG, 0, tv_sec);
         timespec.setAtIndex(JAVA_LONG, 1, tv_nsec);
         return timespec;
+    }
+
+    public static long getTvSec(MemorySegment ts) {
+        return ts.getAtIndex(JAVA_LONG, 0);
+    }
+
+    public static long getTvNsec(MemorySegment ts) {
+        return ts.getAtIndex(JAVA_LONG, 1);
     }
     
 }

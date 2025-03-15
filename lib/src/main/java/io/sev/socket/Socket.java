@@ -118,9 +118,7 @@ public class Socket {
     public static void close(int fd) {
         try {
             closeHandle.invokeExact(fd);
-        } catch(Throwable t) {
-
-        }
+        } catch(Throwable t) {}
     }
 
     public static void listen(int fd, int backlog) throws Throwable {

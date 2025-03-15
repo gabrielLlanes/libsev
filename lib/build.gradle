@@ -70,8 +70,10 @@ test {
     maxParallelForks = 1
 }
 
+def testArgs = ["--enable-native-access=ALL-UNNAMED"]
 tasks.named('test') {
     // Use JUnit Platform for unit tests.
+    jvmArgs += testArgs
     useJUnitPlatform()
 }
 

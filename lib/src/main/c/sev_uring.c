@@ -75,8 +75,20 @@ void sev_uring_prepTimeout(struct io_uring_sqe *sqe, struct __kernel_timespec *t
     io_uring_prep_timeout(sqe, ts, count, flags);
 }
 
+void sev_uring_prepPollAdd(struct io_uring_sqe *sqe, int fd, unsigned poll_mask) {
+    io_uring_prep_poll_add(sqe, fd, poll_mask);
+}
+
+void sev_uring_prepCancel(struct io_uring_sqe *sqe, void *user_data, int flags) {
+    io_uring_prep_cancel(sqe, user_data, flags);
+}
+
 int sev_uring_submit(struct io_uring *ring) {
     return io_uring_submit(ring);
+}
+
+int sev_uring_submitAndWait(struct io_uring *ring, unsigned wait_nr) {
+    return io_uring_submit_and_wait(ring, wait_nr);
 }
 
 static uint32_t minOfInts(uint32_t a, uint32_t b) {

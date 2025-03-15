@@ -132,7 +132,7 @@ public class SocketTest {
     }
 
     @Test
-    public void doesNotConnectTest() throws Throwable {
+    public void errorInProgressTest() throws Throwable {
         int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
         MemorySegment addr = sockAddrInet4((Inet4Address) InetAddress.getByName("127.0.0.1"), 8085, arena);
         bind(fd, addr, SOCKADDR_IN_SIZE);

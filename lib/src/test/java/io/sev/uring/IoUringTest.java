@@ -202,7 +202,7 @@ public class IoUringTest {
         IoUring ring = IoUring.init(arena);
         MemorySegment sqe = ring.getSqe();
         IoUring.sqeSetData64(sqe, 42L);
-        MemorySegment timespec = TimespecUtil.timespec(1L, 100_000_000L, arena);
+        MemorySegment timespec = TimespecUtil.timespec(0L, 10_000_000L, arena);
         IoUring.prepTimeout(sqe, timespec, 0, 0);
         assertEquals(1, ring.submit());
         MemorySegment cqes = arena.allocate(cqeArrayLayout);
@@ -210,7 +210,7 @@ public class IoUringTest {
         assertEquals(42L, getUserData(cqes, 0));
         assertEquals(-ETIME, getResult(cqes, 0));
         ring.queueExit();
-        System.out.println("1.1 SEC TIMEOUT TEST");
+        System.out.println("0.1 SEC TIMEOUT TEST");
     }
 
     @AfterAll

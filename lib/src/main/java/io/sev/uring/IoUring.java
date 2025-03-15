@@ -68,7 +68,13 @@ public class IoUring {
 
     private static final MethodHandle prepTimeoutHandle;
 
+    private static final MethodHandle prepPollAddHandle;
+
+    private static final MethodHandle prepCancelHandle;
+
     private static final MethodHandle submitHandle;
+
+    private static final MethodHandle submitAndWaitHandle;
 
     private static final MethodHandle copyCqesHandle;
 
@@ -144,9 +150,21 @@ public class IoUring {
         FunctionDescriptor prepTimeoutDescriptor = FunctionDescriptor.ofVoid(ADDRESS, ADDRESS, JAVA_INT, JAVA_INT);
         prepTimeoutHandle = linker.downcallHandle(prepTimeoutSegment, prepTimeoutDescriptor);
 
+        MemorySegment prepPollAddSegment = lookup.findOrThrow("sev_uring_prepPollAdd");
+        FunctionDescriptor prepPollAddDescriptor = FunctionDescriptor.ofVoid(ADDRESS, JAVA_INT, JAVA_INT);
+        prepPollAddHandle = linker.downcallHandle(prepPollAddSegment, prepPollAddDescriptor);
+
+        MemorySegment prepCancelSegment = lookup.findOrThrow("sev_uring_prepCancel");
+        FunctionDescriptor prepCancelDescriptor = FunctionDescriptor.ofVoid(ADDRESS, ADDRESS, JAVA_INT);
+        prepCancelHandle = linker.downcallHandle(prepCancelSegment, prepCancelDescriptor);
+
         MemorySegment submitSegment = lookup.findOrThrow("sev_uring_submit");
         FunctionDescriptor submitDescriptor = FunctionDescriptor.of(JAVA_INT, ADDRESS);
         submitHandle = linker.downcallHandle(submitSegment, submitDescriptor);
+
+        MemorySegment submitAndWaitSegment = lookup.findOrThrow("sev_uring_submitAndWait");
+        FunctionDescriptor submitAndWaitDescriptor = FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT);
+        submitAndWaitHandle = linker.downcallHandle(submitAndWaitSegment, submitAndWaitDescriptor);
 
         MemorySegment copyCqesSegment = lookup.findOrThrow("sev_uring_copyCqes");
         FunctionDescriptor copyCqesDescriptor = FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_INT, JAVA_INT);
@@ -156,19 +174,12 @@ public class IoUring {
         FunctionDescriptor queueExitDescriptor = FunctionDescriptor.ofVoid(ADDRESS);
         queueExitHandle = linker.downcallHandle(queueExitSegment, queueExitDescriptor);
     }
-
-    private final SegmentAllocator allocator;
     
     private final MemorySegment memorySegment;
 
     private IoUring(int entries, SegmentAllocator allocator) throws Throwable {
-        this.allocator = allocator;
         this.memorySegment = allocator.allocate(IO_URING_LAYOUT);
         init(entries, memorySegment, 0);
-    }
-
-    public SegmentAllocator allocator() {
-        return allocator;
     }
 
     public MemorySegment memorySegment() {
@@ -234,20 +245,34 @@ public class IoUring {
         prepSendHandle.invokeExact(sqe, sockfd, buf, len, flags);
     }
 
+    public static final int IORING_TIMEOUT_ABS = 1;
+
     public static void prepTimeout(MemorySegment sqe, MemorySegment ts, int count, int flags) throws Throwable {
         prepTimeoutHandle.invokeExact(sqe, ts, count, flags);
     }
 
+    public static void prepPollAdd(MemorySegment sqe, int fd, int poll_mask) throws Throwable {
+        prepPollAddHandle.invokeExact(sqe, fd, poll_mask);
+    }
+
+    public static void prepCancel(MemorySegment sqe, MemorySegment user_data, int flags) throws Throwable {
+        prepCancelHandle.invokeExact(sqe, user_data, flags);
+    }
+
     public MemorySegment getSqe() throws Throwable {
-        MemorySegment res = (MemorySegment) getSqeHandle.invokeExact(memorySegment);
-        if(res.equals(MemorySegment.NULL)) {
-            throw new Exception("SQE is full");
-        }
-        return res;
+        return (MemorySegment) getSqeHandle.invokeExact(memorySegment);
     }
 
     public int submit() throws Throwable {
         int res = (int) submitHandle.invokeExact(memorySegment);
+        if(res < 0) {
+            unixException(res);
+        }
+        return res;
+    }
+
+    public int submitAndWait(int wait_nr) throws Throwable {
+        int res = (int) submitAndWaitHandle.invokeExact(memorySegment, wait_nr);
         if(res < 0) {
             unixException(res);
         }

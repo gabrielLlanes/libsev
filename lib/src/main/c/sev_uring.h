@@ -39,7 +39,13 @@ void sev_uring_prepSend(struct io_uring_sqe *sqe , int sockfd, void *buf, size_t
 
 void sev_uring_prepTimeout(struct io_uring_sqe *sqe, struct __kernel_timespec *ts, unsigned count, unsigned flags);
 
+void sev_uring_prepPollAdd(struct io_uring_sqe *sqe, int fd, unsigned poll_mask);
+
+void sev_uring_prepCancel(struct io_uring_sqe *sqe, void *user_data, int flags);
+
 int sev_uring_submit(struct io_uring *ring);
+
+int sev_uring_submitAndWait(struct io_uring *ring, unsigned wait_nr);
 
 int sev_uring_copyCqes(struct io_uring *ring, struct io_uring_cqe *cqes, uint32_t cqes_len, uint32_t wait_nr);
 
