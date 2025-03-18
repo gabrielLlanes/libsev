@@ -9,12 +9,11 @@ import java.lang.invoke.MethodHandle;
 
 import io.sev.Native;
 
+import static io.sev.util.unix.UnixException.unixException;
 import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.JAVA_BOOLEAN;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
-
-import static io.sev.util.errors.UnixException.unixException;
 
 public class IoUring {
 
@@ -22,9 +21,6 @@ public class IoUring {
 
     //change as needed
     private static final int STRUCT_IO_URING_SIZE = 216;
-
-    public static final int IORING_SETUP_SQPOLL = 2;
-    public static final int IOSQE_IO_LINK = 4;
 
     private static final MethodHandle queueInitHandle;
 
@@ -239,8 +235,6 @@ public class IoUring {
     public static void prepSend(long sqe, int sockfd, MemorySegment buf, long len, int flags) throws Throwable {
         prepSendHandle.invokeExact(sqe, sockfd, buf, len, flags);
     }
-
-    public static final int IORING_TIMEOUT_ABS = 1;
 
     public static void prepTimeout(long sqe, MemorySegment ts, int count, int flags) throws Throwable {
         prepTimeoutHandle.invokeExact(sqe, ts, count, flags);

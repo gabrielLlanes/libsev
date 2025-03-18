@@ -15,11 +15,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 
-import io.sev.util.errors.UnixException;
 import io.sev.util.inet.InetUtil;
+import io.sev.util.unix.UnixException;
 
-import static io.sev.util.errors.UnixException.*;
 import static io.sev.util.inet.InetUtil.*;
+import static io.sev.util.unix.Macros.*;
 import static io.sev.socket.Socket.*;
 
 @TestInstance(Lifecycle.PER_CLASS)
@@ -53,8 +53,8 @@ public class SocketTest {
     @Test
     public void sockOptTest() throws Throwable {
         int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
-        setSockOpt(fd, Socket.SOL_SOCKET, Socket.SO_REUSEADDR, 1);
-        int optval = getSockOpt(fd, Socket.SOL_SOCKET, Socket.SO_REUSEADDR);
+        setSockOpt(fd, SOL_SOCKET, SO_REUSEADDR, 1);
+        int optval = getSockOpt(fd, SOL_SOCKET, SO_REUSEADDR);
         assertEquals(1, optval);
         closeStrict(fd);
         System.out.println("SOCKOPT TEST");
@@ -150,8 +150,8 @@ public class SocketTest {
     }
 
     private void setReuseAddrPort(int fd) throws Throwable {
-        setSockOpt(fd, Socket.SOL_SOCKET, Socket.SO_REUSEADDR, 1);
-        setSockOpt(fd, Socket.SOL_SOCKET, Socket.SO_REUSEPORT, 1);
+        setSockOpt(fd, SOL_SOCKET, SO_REUSEADDR, 1);
+        setSockOpt(fd, SOL_SOCKET, SO_REUSEPORT, 1);
     }
 
     @AfterAll

@@ -8,32 +8,12 @@ import java.lang.invoke.MethodHandle;
 
 import static java.lang.foreign.ValueLayout.JAVA_BOOLEAN;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
+import static io.sev.util.unix.UnixException.unixException;
 import static java.lang.foreign.ValueLayout.ADDRESS;
-
-import static io.sev.util.errors.UnixException.unixException;
 
 import io.sev.Native;
 
 public class Socket {
-
-    public static final int SOL_SOCKET = 1;
-    public static final int SO_REUSEADDR = 2;
-    public static final int SO_KEEPALIVE = 9;
-    public static final int SO_REUSEPORT = 15;
-
-    public static final int IPPROTO_TCP = 6;
-    public static final int TCP_NODELAY = 1;
-    public static final int TCP_CORK = 3;
-
-    public static final int SOCK_CLOEXEC = 02000000;
-    public static final int SOCK_NONBLOCK = 00004000;
-
-    public static final int SOCK_STREAM = 1;
-    public static final int SOCK_DGRAM = 2;
-
-    public static final int SHUT_RD = 0;
-    public static final int SHUT_WR = 1;
-    public static final int SHUT_RDWR = 2;
 
     private static final MethodHandle socketHandle;
 

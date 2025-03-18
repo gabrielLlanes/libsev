@@ -1,6 +1,42 @@
-package io.sev.util.errors;
+package io.sev.util.unix;
 
-public class UnixException extends Exception {
+public class Macros {
+
+    public static final int SOL_SOCKET = 1;
+    public static final int SO_REUSEADDR = 2;
+    public static final int SO_KEEPALIVE = 9;
+    public static final int SO_REUSEPORT = 15;
+
+    public static final int IPPROTO_TCP = 6;
+    public static final int TCP_NODELAY = 1;
+    public static final int TCP_CORK = 3;
+
+    public static final int SOCK_CLOEXEC = 02000000;
+    public static final int SOCK_NONBLOCK = 00004000;
+
+    public static final int SOCK_STREAM = 1;
+    public static final int SOCK_DGRAM = 2;
+
+    public static final int SOCKADDR_IN_SIZE = 16;
+    public static final int SOCKADDR_IN6_SIZE = 28;
+
+    public static final int SHUT_RD = 0;
+    public static final int SHUT_WR = 1;
+    public static final int SHUT_RDWR = 2;
+
+    public static final int AF_INET = 2;
+    public static final int AF_INET6 = 10;
+
+    public static final int POLLIN = 0x001;
+    public static final int POLLOUT = 0x004;
+    public static final int POLLERR= 0x008;
+    public static final int POLLRDHUP = 0x2000;
+
+    public static final int CLOCK_MONOTONIC = 1;
+
+    public static final int IORING_SETUP_SQPOLL = 2;
+    public static final int IOSQE_IO_LINK = 4;
+    public static final int IORING_TIMEOUT_ABS = 1;
 
     public static final int EPERM = 1;
     public static final int ENOENT = 2;
@@ -44,20 +80,5 @@ public class UnixException extends Exception {
     public static final int EINPROGRESS = 115;
     public static final int EDQUOT = 122;
     public static final int ECANCELED = 125;
-
-    private final int errno;
-
-    private UnixException(int errnoNeg) {
-        //TODO: make descriptive error messages corresponding to errno
-        super("Unix Error: " + -errnoNeg);
-        this.errno = -errnoNeg;
-    }
-
-    public int errno() {
-        return errno;
-    }
-
-    public static void unixException(int errnoNeg) throws UnixException {
-        throw new UnixException(errnoNeg);
-    }
+    
 }

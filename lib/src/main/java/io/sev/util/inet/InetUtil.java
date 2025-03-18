@@ -9,6 +9,7 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.nio.ByteOrder;
 
+import static io.sev.util.unix.Macros.*;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static java.lang.foreign.ValueLayout.JAVA_SHORT;
@@ -18,14 +19,6 @@ import static java.lang.foreign.MemoryLayout.structLayout;
 
 public class InetUtil {
     
-    public static final int AF_INET = 2;
-
-    public static final int AF_INET6 = 10;
-
-    public static final int SOCKADDR_IN_SIZE = 16;
-
-    public static final int SOCKADDR_IN6_SIZE = 28;
-
     private static final ByteOrder NETWORK_BYTE_ORDER = ByteOrder.BIG_ENDIAN;
 
     /*

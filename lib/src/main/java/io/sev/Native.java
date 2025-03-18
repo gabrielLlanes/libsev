@@ -1,6 +1,6 @@
 package io.sev;
 
-import static io.sev.util.errors.UnixException.unixException;
+import static io.sev.util.unix.UnixException.unixException;
 import static java.lang.foreign.ValueLayout.*;
 
 import java.lang.foreign.FunctionDescriptor;
@@ -11,13 +11,6 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
 
 public class Native {
-
-    public static final int POLLIN = 0x001;
-    public static final int POLLOUT = 0x004;
-    public static final int POLLERR= 0x008;
-    public static final int POLLRDHUP = 0x2000;
-
-    public static final int CLOCK_MONOTONIC = 1;
 
     private static final MethodHandle callocHandle;
 

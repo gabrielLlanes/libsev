@@ -1,7 +1,7 @@
 package io.sev.loop.uring;
 
 import static io.sev.socket.Socket.*;
-import static io.sev.util.inet.InetUtil.*;
+import static io.sev.util.unix.Macros.*;
 import static java.lang.foreign.ValueLayout.*;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -19,6 +19,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import io.sev.Native;
+import io.sev.loop.Callback;
 import io.sev.loop.Operation;
 import io.sev.util.inet.InetUtil;
 
@@ -54,8 +55,9 @@ public class UringLoopTest {
         AtomicBoolean accepted = new AtomicBoolean(false);
         Operation acceptOperation = new Operation.Accept(serverFd, MemorySegment.NULL, MemorySegment.NULL, 0, false);
         Integer acceptContext = 99;
-        UringCallback acceptCallback = (context, completion, result) -> {
+        Callback<UringLoop, UringCompletion> acceptCallback = (context, uringLoop, completion, result) -> {
             assertSame(acceptContext, context);
+            assertSame(loop, uringLoop);
             assertTrue(result > 0);
             System.out.println("ACCEPTED FD " + result);
             acceptedFd.set(result);
@@ -68,8 +70,9 @@ public class UringLoopTest {
         AtomicBoolean connected = new AtomicBoolean(false);
         Operation connectOperation = new Operation.Connect(clientFd, localhost, SOCKADDR_IN_SIZE);
         Integer connectContext = 100;
-        UringCallback connectCallback = (context, completion, result) -> {
+        Callback<UringLoop, UringCompletion> connectCallback = (context, uringLoop, completion, result) -> {
             assertSame(connectContext, context);
+            assertSame(loop, uringLoop);
             assertEquals(0, result);
             assertEquals(Operation.Op.CONNECT, completion.operation.op);
             connected.set(true);
@@ -90,8 +93,9 @@ public class UringLoopTest {
 
         Operation sendOperation = new Operation.Send(clientFd, sendSegment, 10L, 0);
         AtomicBoolean sent = new AtomicBoolean(false);
-        UringCallback sendCallback = (context, completion, result) -> {
+        Callback<UringLoop, UringCompletion> sendCallback = (context, uringLoop, completion, result) -> {
             assertEquals(10, result);
+            assertSame(loop, uringLoop);
             sent.set(true);
             return false;
         };
@@ -100,8 +104,9 @@ public class UringLoopTest {
         MemorySegment recvSegment = allocator.allocate(10L);
         Operation recvOperation = new Operation.Recv(acceptedFd.get(), recvSegment, 10L, 0);
         AtomicBoolean received = new AtomicBoolean(false);
-        UringCallback recvCallback = (context, completion, result) -> {
+        Callback<UringLoop, UringCompletion> recvCallback = (context, uringLoop, completion, result) -> {
             assertEquals(10, result);
+            assertSame(loop, uringLoop);
             assertArrayEquals(sendBytes, recvSegment.toArray(JAVA_BYTE));
             System.out.println("received bytes: " + Arrays.toString(recvSegment.toArray(JAVA_BYTE)));
             received.set(true);
@@ -122,8 +127,9 @@ public class UringLoopTest {
 
         AtomicLong nopsFinished = new AtomicLong(0L);
         Operation nopOperation = new Operation.Nop();
-        UringCallback nopCallback = (context, completion, result) -> {
+        Callback<UringLoop, UringCompletion> nopCallback = (context, uringLoop, completion, result) -> {
             assertEquals(0, result);
+            assertSame(loop, uringLoop);
             if(nopsFinished.incrementAndGet() == 1000L) {
                 return false;
             } 

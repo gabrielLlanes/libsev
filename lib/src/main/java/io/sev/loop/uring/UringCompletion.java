@@ -1,6 +1,7 @@
 package io.sev.loop.uring;
 
 import io.sev.Native;
+import io.sev.loop.Callback;
 import io.sev.loop.Completion;
 import io.sev.loop.Operation;
 import io.sev.uring.IoUring;
@@ -9,11 +10,11 @@ public final class UringCompletion extends Completion<UringLoop, UringCompletion
 
     long addressId;
 
-    public UringCompletion(Operation operation, Object context, UringCallback callback) {
+    public UringCompletion(Operation operation, Object context, Callback<UringLoop, UringCompletion> callback) {
         super(operation, context, callback);
     }
 
-    public static UringCompletion of(Operation operation, Object context, UringCallback callback) {
+    public static UringCompletion of(Operation operation, Object context, Callback<UringLoop, UringCompletion> callback) {
         return new UringCompletion(operation, context, callback);
     }
 
@@ -77,7 +78,7 @@ public final class UringCompletion extends Completion<UringLoop, UringCompletion
         }
     }
 
-    final boolean complete(int res) {
-        return callback.invoke(context, this, res);
+    final boolean complete(UringLoop loop, int res) {
+        return callback.invoke(context, loop, this, res);
     }
 }

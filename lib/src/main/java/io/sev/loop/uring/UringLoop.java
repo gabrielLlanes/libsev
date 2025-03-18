@@ -11,25 +11,25 @@ import io.sev.loop.Loop;
 import io.sev.loop.Operation;
 import io.sev.queue.IntrusiveQueue;
 import io.sev.uring.IoUring;
-import io.sev.util.errors.UnixException;
+import io.sev.util.unix.Macros;
+import io.sev.util.unix.UnixException;
 import io.sev.util.value.BooleanWrapper;
 import io.sev.util.value.LongWrapper;
 
-import static io.sev.util.errors.UnixException.*;
 import static io.sev.uring.IoUringCQE.*;
 import static io.sev.util.timer.TimespecUtil.*;
-import static io.sev.uring.IoUring.*;
+import static io.sev.util.unix.Macros.*;
 import static io.sev.Native.*;
 
 public class UringLoop extends Loop<UringLoop, UringCompletion> {
 
-    private final IoUring ring;
-
-    private Map<Long, UringCompletion> inUring = new HashMap<>();
-
     private static final SegmentAllocator callocator = Native.callocator();
 
     private static final int NCQES = 128;
+
+    private final IoUring ring;
+
+    private final Map<Long, UringCompletion> inUring = new HashMap<>();
 
     private final MemorySegment cqes = callocator.allocate(IO_URING_CQE_LAYOUT, NCQES);
 
@@ -85,7 +85,7 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
     @Override
     public void cancel(UringCompletion completion, Callback<UringLoop, UringCompletion> callback) {
         Operation cancelOperation = new Operation.Cancel(completion.addressId);
-        UringCompletion cancelCompletion = UringCompletion.of(cancelOperation, null, (UringCallback) callback);
+        UringCompletion cancelCompletion = UringCompletion.of(cancelOperation, null, callback);
         enqueue(cancelCompletion);
     }
 
@@ -106,7 +106,7 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
                         throw new RuntimeException();
                     }
                 }
-                IoUring.prepTimeout(timeoutSqe, timeoutTs, 0, IORING_TIMEOUT_ABS);
+                IoUring.prepTimeout(timeoutSqe, timeoutTs, 0, Macros.IORING_TIMEOUT_ABS);
                 IoUring.sqeSetData64(timeoutSqe, 0L);
                 timeouts.increment();
 
@@ -163,7 +163,7 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
                 UringCompletion completion = inUring.remove(userData);
                 free(userData);
                 completion.addressId = 0;
-                if(completion.complete(result) && completion.operation.op != Operation.Op.CANCEL) {
+                if(completion.complete(this, result) && completion.operation.op != Operation.Op.CANCEL) {
                     enqueue(completion);
                 }
             }

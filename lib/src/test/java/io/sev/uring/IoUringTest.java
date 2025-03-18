@@ -1,15 +1,10 @@
 package io.sev.uring;
 
 import static io.sev.socket.Socket.*;
-import static io.sev.util.errors.UnixException.*;
-import static io.sev.util.inet.InetUtil.*;
-
+import static io.sev.util.unix.Macros.*;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
-
 import static io.sev.uring.IoUringCQE.*;
-
 import static java.lang.foreign.MemoryLayout.*;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
@@ -28,6 +23,7 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
 
 import io.sev.util.inet.InetUtil;
 import io.sev.util.timer.TimespecUtil;
+import io.sev.util.unix.Macros;
 
 @TestInstance(Lifecycle.PER_CLASS)
 public class IoUringTest {
@@ -176,7 +172,7 @@ public class IoUringTest {
         for(int i = 1; i <= 100; i++) {
             long sqe = ring.getSqe();
             IoUring.sqeSetData64(sqe, (long) i);
-            IoUring.sqeSetFlags(sqe, IoUring.IOSQE_IO_LINK);
+            IoUring.sqeSetFlags(sqe, Macros.IOSQE_IO_LINK);
             assertNotEquals(0L, sqe);
             IoUring.prepNop(sqe);
         }
