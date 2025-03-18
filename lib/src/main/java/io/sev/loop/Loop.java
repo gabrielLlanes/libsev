@@ -12,10 +12,10 @@ public abstract class Loop<L extends Loop<L, T>, T extends Completion<L, T>> {
 
     }
 
-    public abstract void tick() throws Throwable;
+    public abstract void tick();
 
     public abstract void enqueue(T completion);
 
-    //public abstract void cancel(T completion);
+    public abstract void cancel(T completion, Callback<L, T> callback);
     
 }

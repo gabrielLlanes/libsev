@@ -51,10 +51,10 @@ public class IoUringTest {
     @Test
     public void uringSocketTest() throws Throwable {
         IoUring ring = IoUring.init(arena);
-        assertTrue(ring.memorySegment().address() > 0);
+        assertTrue(ring.ringAddress() > 0);
 
-        MemorySegment sqe = ring.getSqe();
-        assertNotEquals(MemorySegment.NULL, sqe);
+        long sqe = ring.getSqe();
+        assertNotEquals(0L, sqe);
 
         int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
         setSockOpt(fd, SOL_SOCKET, SO_REUSEADDR, 1);
@@ -70,7 +70,7 @@ public class IoUringTest {
 
         Thread.sleep(5);
 
-        MemorySegment sqeConnect = ring.getSqe();
+        long sqeConnect = ring.getSqe();
         int clientFd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
         IoUring.prepConnect(sqeConnect, clientFd, localhost, SOCKADDR_IN_SIZE);
         IoUring.sqeSetData64(sqeConnect, 101L);
@@ -103,11 +103,11 @@ public class IoUringTest {
         for(int i = 0; i < 5; i++) {
             sendSegment.set(JAVA_BYTE, i, sendBytes[i]);
         }
-        MemorySegment sendSqe = ring.getSqe();
+        long sendSqe = ring.getSqe();
         IoUring.prepSend(sendSqe, acceptFd, sendSegment, 5, 0);
 
         MemorySegment recvSegment = arena.allocate(5);
-        MemorySegment recvSqe = ring.getSqe();
+        long recvSqe = ring.getSqe();
         IoUring.prepRecv(recvSqe, clientFd, recvSegment, 5, 0);
 
         ring.submit();
@@ -124,11 +124,11 @@ public class IoUringTest {
         for(int i = 0; i < 5; i++) {
             writeSegment.set(JAVA_BYTE, i, writeBytes[i]);
         }
-        MemorySegment writeSqe = ring.getSqe();
+        long writeSqe = ring.getSqe();
         IoUring.prepWrite(writeSqe, acceptFd, writeSegment, 5, 0);
 
         MemorySegment readSegment = arena.allocate(5);
-        MemorySegment readSqe = ring.getSqe();
+        long readSqe = ring.getSqe();
         IoUring.prepRead(readSqe, clientFd, readSegment, 5, 0);
 
         ring.submit();
@@ -141,16 +141,16 @@ public class IoUringTest {
         assertArrayEquals(writeBytes, readSegment.toArray(JAVA_BYTE));
         System.out.println("read: " + Arrays.toString(readSegment.toArray(JAVA_BYTE)));
 
-        MemorySegment shutdownSqe = ring.getSqe();
+        long shutdownSqe = ring.getSqe();
         IoUring.prepShutdown(shutdownSqe, clientFd, SHUT_RDWR);
 
-        MemorySegment closeSqe = ring.getSqe();
+        long closeSqe = ring.getSqe();
         IoUring.prepClose(closeSqe, fd);
 
-        MemorySegment closeAcceptSqe = ring.getSqe();
+        long closeAcceptSqe = ring.getSqe();
         IoUring.prepClose(closeAcceptSqe, acceptFd);
 
-        MemorySegment closeClientSqe = ring.getSqe();
+        long closeClientSqe = ring.getSqe();
         IoUring.prepClose(closeClientSqe, clientFd);
 
         assertEquals(4, ring.submit());
@@ -174,10 +174,10 @@ public class IoUringTest {
     public void uringOneHundredNopTest() throws Throwable {
         IoUring ring = IoUring.init(arena);
         for(int i = 1; i <= 100; i++) {
-            MemorySegment sqe = ring.getSqe();
+            long sqe = ring.getSqe();
             IoUring.sqeSetData64(sqe, (long) i);
             IoUring.sqeSetFlags(sqe, IoUring.IOSQE_IO_LINK);
-            assertNotEquals(MemorySegment.NULL, sqe);
+            assertNotEquals(0L, sqe);
             IoUring.prepNop(sqe);
         }
         int submitted = ring.submit();
@@ -200,7 +200,7 @@ public class IoUringTest {
     @Test
     public void uringTimeoutTest() throws Throwable {
         IoUring ring = IoUring.init(arena);
-        MemorySegment sqe = ring.getSqe();
+        long sqe = ring.getSqe();
         IoUring.sqeSetData64(sqe, 42L);
         MemorySegment timespec = TimespecUtil.timespec(0L, 10_000_000L, arena);
         IoUring.prepTimeout(sqe, timespec, 0, 0);

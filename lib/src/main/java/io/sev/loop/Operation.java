@@ -117,8 +117,8 @@ public abstract class Operation {
     }
 
     public static class Cancel extends Operation {
-        public MemorySegment userData;
-        public Cancel(MemorySegment userData) {
+        public long userData;
+        public Cancel(long userData) {
             super(Op.CANCEL);
             this.userData = userData;
         }

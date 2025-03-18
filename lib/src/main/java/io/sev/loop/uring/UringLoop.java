@@ -6,7 +6,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import io.sev.Native;
+import io.sev.loop.Callback;
 import io.sev.loop.Loop;
+import io.sev.loop.Operation;
 import io.sev.queue.IntrusiveQueue;
 import io.sev.uring.IoUring;
 import io.sev.util.errors.UnixException;
@@ -23,11 +25,13 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
 
     private final IoUring ring;
 
+    private Map<Long, UringCompletion> inUring = new HashMap<>();
+
     private static final SegmentAllocator callocator = Native.callocator();
 
-    private IntrusiveQueue<UringCompletion> completed = new IntrusiveQueue<>();
+    private static final int NCQES = 128;
 
-    private Map<Long, UringCompletion> inUring = new HashMap<>();
+    private final MemorySegment cqes = callocator.allocate(IO_URING_CQE_LAYOUT, NCQES);
 
     private UringLoop() {
         try {
@@ -45,19 +49,44 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
         try {
             free(cqes);
             ring.queueExit();
-            free(ring.memorySegment());
+            free(ring.ringAddress());
         } catch(Throwable t) {
             throw new RuntimeException(t);
         }
     }
 
-    private static final int NCQES = 128;
-
-    private final MemorySegment cqes = callocator.allocate(IO_URING_CQE_LAYOUT, NCQES);
+    @Override
+    public void tick() {
+        LongWrapper timeouts = LongWrapper.of(0);
+        BooleanWrapper etime = BooleanWrapper.of(false);
+        try {
+            flush(0, timeouts, etime);
+        } catch(Throwable t) {
+            throw new RuntimeException(t);
+        }
+    }
 
     @Override
-    public void tick() throws Throwable {
+    public void enqueue(UringCompletion completion) {
+        try {
+            long sqe = ring.getSqe();
+            if(sqe == 0L) {
+                //no space in submission queue, put in unqueued for now
+                unqueued.offer(completion);
+                return;
+            }
+            completion.prep(sqe);
+            inUring.put(completion.addressId, completion);
+        } catch(Throwable t) {
+            throw new RuntimeException(t);
+        }
+    }
 
+    @Override
+    public void cancel(UringCompletion completion, Callback<UringLoop, UringCompletion> callback) {
+        Operation cancelOperation = new Operation.Cancel(completion.addressId);
+        UringCompletion cancelCompletion = UringCompletion.of(cancelOperation, null, (UringCallback) callback);
+        enqueue(cancelCompletion);
     }
 
     public void runForNs(long nanoseconds) {
@@ -69,11 +98,11 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
             LongWrapper timeouts = LongWrapper.of(0L);
             BooleanWrapper etime = BooleanWrapper.of(false);
             while(!etime.value()) {
-                MemorySegment timeoutSqe = ring.getSqe();
-                if(timeoutSqe.equals(MemorySegment.NULL)) {
+                long timeoutSqe = ring.getSqe();
+                if(timeoutSqe == 0L) {
                     flushSubmissions(0, timeouts, etime);
                     timeoutSqe = ring.getSqe();
-                    if(timeoutSqe.equals(MemorySegment.NULL)) {
+                    if(timeoutSqe == 0L) {
                         throw new RuntimeException();
                     }
                 }
@@ -94,23 +123,6 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
         }
     }
 
-    
-    @Override
-    public void enqueue(UringCompletion completion) {
-        try {
-            MemorySegment sqe = ring.getSqe();
-            if(sqe.equals(MemorySegment.NULL)) {
-                //no space in submission queue, put in unqueued for now
-                unqueued.offer(completion);
-                return;
-            }
-            completion.prep(sqe);
-            inUring.put(completion.addressId, completion);
-        } catch(Throwable t) {
-            throw new RuntimeException(t);
-        }
-    }
-
     private void flush(int waitNr, LongWrapper timeouts, BooleanWrapper etime) throws Throwable {
         flushSubmissions(waitNr, timeouts, etime);
         flushCompletions(0, timeouts, etime);
@@ -120,13 +132,6 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
         UringCompletion curr = null;
         while((curr = copy.poll()) != null) {
             enqueue(curr);
-        }
-
-        while((curr = completed.poll()) != null) {
-            free(curr.addressId);
-            if(curr.complete()) {
-                enqueue(curr);
-            }
         }
     }
     
@@ -156,8 +161,11 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
                     continue;
                 }
                 UringCompletion completion = inUring.remove(userData);
-                completion.res = result;
-                this.completed.offer(completion);
+                free(userData);
+                completion.addressId = 0;
+                if(completion.complete(result) && completion.operation.op != Operation.Op.CANCEL) {
+                    enqueue(completion);
+                }
             }
             if(completed < NCQES) break;
         }

@@ -1,7 +1,5 @@
 package io.sev.loop.uring;
 
-import java.lang.foreign.MemorySegment;
-
 import io.sev.Native;
 import io.sev.loop.Completion;
 import io.sev.loop.Operation;
@@ -11,8 +9,6 @@ public final class UringCompletion extends Completion<UringLoop, UringCompletion
 
     long addressId;
 
-    int res;
-
     public UringCompletion(Operation operation, Object context, UringCallback callback) {
         super(operation, context, callback);
     }
@@ -21,7 +17,7 @@ public final class UringCompletion extends Completion<UringLoop, UringCompletion
         return new UringCompletion(operation, context, callback);
     }
 
-    void prep(MemorySegment sqe) throws Throwable {
+    void prep(long sqe) throws Throwable {
         try {
             addressId = Native.calloc(1L, 1L);
         } catch(Throwable t) {
@@ -81,7 +77,7 @@ public final class UringCompletion extends Completion<UringLoop, UringCompletion
         }
     }
 
-    final boolean complete() {
+    final boolean complete(int res) {
         return callback.invoke(context, this, res);
     }
 }
