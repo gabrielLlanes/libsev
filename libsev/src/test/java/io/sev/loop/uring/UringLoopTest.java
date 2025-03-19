@@ -53,7 +53,7 @@ public class UringLoopTest {
         UringLoop loop = UringLoop.init();
 
         AtomicBoolean accepted = new AtomicBoolean(false);
-        Operation acceptOperation = new Operation.Accept(serverFd, MemorySegment.NULL, MemorySegment.NULL, 0, false);
+        Operation acceptOperation = new Operation.Accept().fd(serverFd);
         Integer acceptContext = 99;
         Callback<UringLoop, UringCompletion> acceptCallback = (context, uringLoop, completion, result) -> {
             assertSame(acceptContext, context);
@@ -65,10 +65,16 @@ public class UringLoopTest {
             accepted.set(true);
             return false;
         };
-        UringCompletion acceptCompletion  = UringCompletion.of(acceptOperation, acceptContext, acceptCallback);
+        UringCompletion acceptCompletion  = new UringCompletion()
+                                                    .operation(acceptOperation)
+                                                    .context(acceptContext)
+                                                    .callback(acceptCallback);
         
         AtomicBoolean connected = new AtomicBoolean(false);
-        Operation connectOperation = new Operation.Connect(clientFd, localhost, SOCKADDR_IN_SIZE);
+        Operation connectOperation = new Operation.Connect()
+                                                .fd(clientFd)
+                                                .addr(localhost)
+                                                .addrLen(SOCKADDR_IN_SIZE);
         Integer connectContext = 100;
         Callback<UringLoop, UringCompletion> connectCallback = (context, uringLoop, completion, result) -> {
             assertSame(connectContext, context);
@@ -78,7 +84,10 @@ public class UringLoopTest {
             connected.set(true);
             return false;
         };
-        UringCompletion connectCompletion = UringCompletion.of(connectOperation, connectContext, connectCallback);
+        UringCompletion connectCompletion = new UringCompletion()
+                                                .operation(connectOperation)
+                                                .context(connectContext)
+                                                .callback(connectCallback);
 
         loop.enqueue(acceptCompletion);
         loop.enqueue(connectCompletion);
@@ -91,7 +100,10 @@ public class UringLoopTest {
         MemorySegment sendSegment = allocator.allocate(10L);
         sendSegment.copyFrom(MemorySegment.ofArray(sendBytes));
 
-        Operation sendOperation = new Operation.Send(clientFd, sendSegment, 10L, 0);
+        Operation sendOperation = new Operation.Send()
+                                        .fd(clientFd)
+                                        .buf(sendSegment)
+                                        .len(10L);
         AtomicBoolean sent = new AtomicBoolean(false);
         Callback<UringLoop, UringCompletion> sendCallback = (context, uringLoop, completion, result) -> {
             assertEquals(10, result);
@@ -99,10 +111,15 @@ public class UringLoopTest {
             sent.set(true);
             return false;
         };
-        UringCompletion sendCompletion = UringCompletion.of(sendOperation, null, sendCallback);
+        UringCompletion sendCompletion = new UringCompletion()
+                                            .operation(sendOperation)
+                                            .callback(sendCallback);
 
         MemorySegment recvSegment = allocator.allocate(10L);
-        Operation recvOperation = new Operation.Recv(acceptedFd.get(), recvSegment, 10L, 0);
+        Operation recvOperation = new Operation.Recv()
+                                        .fd(acceptedFd.get())
+                                        .buf(recvSegment)
+                                        .len(10L);
         AtomicBoolean received = new AtomicBoolean(false);
         Callback<UringLoop, UringCompletion> recvCallback = (context, uringLoop, completion, result) -> {
             assertEquals(10, result);
@@ -112,7 +129,9 @@ public class UringLoopTest {
             received.set(true);
             return false;
         };
-        UringCompletion recvCompletion = UringCompletion.of(recvOperation, null, recvCallback);
+        UringCompletion recvCompletion = new UringCompletion()
+                                            .operation(recvOperation)
+                                            .callback(recvCallback);
 
         loop.enqueue(sendCompletion);
         loop.enqueue(recvCompletion);
@@ -135,7 +154,9 @@ public class UringLoopTest {
             } 
             return true;
         };
-        UringCompletion nopCompletion = UringCompletion.of(nopOperation, null, nopCallback);
+        UringCompletion nopCompletion = new UringCompletion()
+                                            .operation(nopOperation)
+                                            .callback(nopCallback);
 
         loop.enqueue(nopCompletion);
         loop.runAll();

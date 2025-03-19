@@ -11,11 +11,13 @@ public final class UringCompletion extends Completion<UringLoop, UringCompletion
 
     private static final Random random = new Random();
 
-    long id;
+    final long id = random.nextLong();
 
     public UringCompletion(Operation operation, Object context, Callback<UringLoop, UringCompletion> callback) {
         super(operation, context, callback);
-        id = random.nextLong();
+    }
+
+    public UringCompletion() {
     }
 
     public static UringCompletion of(Operation operation, Object context, Callback<UringLoop, UringCompletion> callback) {
