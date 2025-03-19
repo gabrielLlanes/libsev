@@ -11,4 +11,4 @@ plugins {
 }
 
 rootProject.name = 'libsev'
-include('lib')
+include('libsev')

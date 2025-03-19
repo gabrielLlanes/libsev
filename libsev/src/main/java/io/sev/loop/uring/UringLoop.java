@@ -88,7 +88,7 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
                 return;
             }
             completion.prep(sqe);
-            inUring.put(completion.addressId, completion);
+            inUring.put(completion.id, completion);
             active++;
         } catch(Throwable t) {
             throw new RuntimeException(t);
@@ -97,7 +97,7 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
 
     @Override
     public void cancel(UringCompletion completion, Callback<UringLoop, UringCompletion> callback) {
-        Operation cancelOperation = new Operation.Cancel(completion.addressId);
+        Operation cancelOperation = new Operation.Cancel(completion.id);
         UringCompletion cancelCompletion = UringCompletion.of(cancelOperation, null, callback);
         enqueue(cancelCompletion);
     }
@@ -184,12 +184,12 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
                     continue;
                 }
                 UringCompletion completion = inUring.remove(userData);
-                free(userData);
-                completion.addressId = 0;
                 boolean enqueueAgain = completion.complete(this, result);
                 active--;
                 if(enqueueAgain && completion.operation.op != Operation.Op.CANCEL) {
                     enqueue(completion);
+                } else {
+                    //free(userData);
                 }
             }
             if(completed < NCQES) {

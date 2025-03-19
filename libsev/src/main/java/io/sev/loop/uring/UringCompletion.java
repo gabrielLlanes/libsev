@@ -1,6 +1,7 @@
 package io.sev.loop.uring;
 
-import io.sev.Native;
+import java.util.Random;
+
 import io.sev.loop.Callback;
 import io.sev.loop.Completion;
 import io.sev.loop.Operation;
@@ -8,10 +9,13 @@ import io.sev.uring.IoUring;
 
 public final class UringCompletion extends Completion<UringLoop, UringCompletion> {
 
-    long addressId;
+    private static final Random random = new Random();
+
+    long id;
 
     public UringCompletion(Operation operation, Object context, Callback<UringLoop, UringCompletion> callback) {
         super(operation, context, callback);
+        id = random.nextLong();
     }
 
     public static UringCompletion of(Operation operation, Object context, Callback<UringLoop, UringCompletion> callback) {
@@ -19,12 +23,7 @@ public final class UringCompletion extends Completion<UringLoop, UringCompletion
     }
 
     void prep(long sqe) throws Throwable {
-        try {
-            addressId = Native.calloc(1L, 1L);
-        } catch(Throwable t) {
-            throw new RuntimeException(t);
-        }
-        IoUring.sqeSetData64(sqe, addressId);
+        IoUring.sqeSetData64(sqe, id);
         switch(operation.op) {
             case ACCEPT:
                 Operation.Accept acceptOperation = (Operation.Accept) operation;

@@ -21,7 +21,7 @@ public class Native {
     private static SegmentAllocator callocator = null;
 
     static {
-        System.loadLibrary("sevloop");
+        System.loadLibrary("sev");
         Linker linker = Linker.nativeLinker();
         SymbolLookup lookup = SymbolLookup.loaderLookup();
         
