@@ -110,8 +110,8 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
 
             LongWrapper timeouts = LongWrapper.of(0L);
             BooleanWrapper etime = BooleanWrapper.of(false);
-            while(!etime.value()) {
-                long timeoutSqe = ring.getSqe();
+
+            long timeoutSqe = ring.getSqe();
                 if(timeoutSqe == 0L) {
                     flushSubmissions(0, timeouts, etime);
                     timeoutSqe = ring.getSqe();
@@ -119,10 +119,11 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
                         throw new RuntimeException();
                     }
                 }
-                IoUring.prepTimeout(timeoutSqe, timeoutTs, 0, Macros.IORING_TIMEOUT_ABS);
-                IoUring.sqeSetData64(timeoutSqe, 0L);
-                timeouts.increment();
+            IoUring.prepTimeout(timeoutSqe, timeoutTs, 0, Macros.IORING_TIMEOUT_ABS);
+            IoUring.sqeSetData64(timeoutSqe, 0L);
+            timeouts.increment();
 
+            while(!etime.value()) {
                 flush(1, timeouts, etime);
             }
 
@@ -173,10 +174,12 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
                 long userData = getUserData(cqes, i);
                 int result = getResult(cqes, i);
                 if(userData == 0L) {
+                    System.out.println("timeout cqe detected");
                     if(timeouts != null) {
                         timeouts.decrement();
                     }
                     if(result == -ETIME) {
+                        System.out.println("timeout completed with ETIME");
                         if(etime != null) {
                             etime.set(true);
                         }

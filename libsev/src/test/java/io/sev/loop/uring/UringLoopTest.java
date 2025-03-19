@@ -91,7 +91,7 @@ public class UringLoopTest {
 
         loop.enqueue(acceptCompletion);
         loop.enqueue(connectCompletion);
-        loop.runAll();
+        loop.runForNs(50_000_000L);
 
         assertTrue(accepted.get());
         assertTrue(connected.get());
