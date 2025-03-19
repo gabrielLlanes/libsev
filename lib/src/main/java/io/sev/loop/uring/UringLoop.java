@@ -4,6 +4,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Queue;
 
 import io.sev.Native;
 import io.sev.loop.Callback;
@@ -56,11 +57,22 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
     }
 
     @Override
-    public void tick() {
-        LongWrapper timeouts = LongWrapper.of(0);
-        BooleanWrapper etime = BooleanWrapper.of(false);
+    public void runAll() {
         try {
-            flush(0, timeouts, etime);
+            while(active > 0 || !unqueuedCompletions.isEmpty()) {
+                flush(1, null, null);
+            }
+        } catch(Throwable t) {
+            throw new RuntimeException(t);
+        }
+    }
+
+    @Override
+    public void runOnce() {
+        try {
+            if(active > 0 || !unqueuedCompletions.isEmpty()) {
+                flush(1, null, null);
+            }
         } catch(Throwable t) {
             throw new RuntimeException(t);
         }
@@ -72,11 +84,12 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
             long sqe = ring.getSqe();
             if(sqe == 0L) {
                 //no space in submission queue, put in unqueued for now
-                unqueued.offer(completion);
+                unqueuedCompletions.offer(completion);
                 return;
             }
             completion.prep(sqe);
             inUring.put(completion.addressId, completion);
+            active++;
         } catch(Throwable t) {
             throw new RuntimeException(t);
         }
@@ -123,16 +136,19 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
         }
     }
 
-    private void flush(int waitNr, LongWrapper timeouts, BooleanWrapper etime) throws Throwable {
-        flushSubmissions(waitNr, timeouts, etime);
-        flushCompletions(0, timeouts, etime);
-
-        IntrusiveQueue<UringCompletion> copy = this.unqueued;
-        this.unqueued = new IntrusiveQueue<>();
+    private void enqueueUnqueued() {
+        Queue<UringCompletion> copy = this.unqueuedCompletions;
+        this.unqueuedCompletions = new IntrusiveQueue<>();
         UringCompletion curr = null;
         while((curr = copy.poll()) != null) {
             enqueue(curr);
         }
+    }
+
+    private void flush(int waitNr, LongWrapper timeouts, BooleanWrapper etime) throws Throwable {
+        flushSubmissions(waitNr, timeouts, etime);
+        flushCompletions(0, timeouts, etime);
+        enqueueUnqueued();
     }
     
     private void flushCompletions(int waitNr, LongWrapper timeouts, BooleanWrapper etime) throws Throwable {
@@ -148,26 +164,37 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
                     throw ex;
                 }
             }
-            if(completed > waitRemaining) waitRemaining = 0;
-            else waitRemaining -= completed;
+            if(completed > waitRemaining) {
+                waitRemaining = 0;
+            } else {
+                waitRemaining -= completed;
+            }
             for(int i = 0; i < completed; i++) {
                 long userData = getUserData(cqes, i);
                 int result = getResult(cqes, i);
                 if(userData == 0L) {
-                    timeouts.decrement();
+                    if(timeouts != null) {
+                        timeouts.decrement();
+                    }
                     if(result == -ETIME) {
-                        etime.set(true);
+                        if(etime != null) {
+                            etime.set(true);
+                        }
                     }
                     continue;
                 }
                 UringCompletion completion = inUring.remove(userData);
                 free(userData);
                 completion.addressId = 0;
-                if(completion.complete(this, result) && completion.operation.op != Operation.Op.CANCEL) {
+                boolean enqueueAgain = completion.complete(this, result);
+                active--;
+                if(enqueueAgain && completion.operation.op != Operation.Op.CANCEL) {
                     enqueue(completion);
                 }
             }
-            if(completed < NCQES) break;
+            if(completed < NCQES) {
+                break;
+            }
         }
     }
 
@@ -177,9 +204,7 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
                 ring.submitAndWait(waitNr);
             } catch(UnixException ex) {
                 int errno = ex.errno();
-                if(errno == EINTR) continue;
-                else if(errno == EBUSY || errno == EAGAIN) {
-                    flushCompletions(1, timeouts, etime);
+                if(errno == EINTR) {
                     continue;
                 } else {
                     throw ex;

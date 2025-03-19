@@ -82,7 +82,7 @@ public class UringLoopTest {
 
         loop.enqueue(acceptCompletion);
         loop.enqueue(connectCompletion);
-        loop.runForNs(10_000_000L);
+        loop.runAll();
 
         assertTrue(accepted.get());
         assertTrue(connected.get());
@@ -116,7 +116,7 @@ public class UringLoopTest {
 
         loop.enqueue(sendCompletion);
         loop.enqueue(recvCompletion);
-        loop.runForNs(10_000_000L);
+        loop.runAll();
 
         assertTrue(sent.get());
         assertTrue(received.get());
@@ -138,7 +138,7 @@ public class UringLoopTest {
         UringCompletion nopCompletion = UringCompletion.of(nopOperation, null, nopCallback);
 
         loop.enqueue(nopCompletion);
-        loop.runForNs(100_000_000L);
+        loop.runAll();
         assertEquals(1000L, nopsFinished.get());
 
         loop.deinit();
