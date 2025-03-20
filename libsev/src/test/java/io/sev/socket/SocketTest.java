@@ -8,6 +8,7 @@ import java.lang.foreign.MemorySegment;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -33,14 +34,14 @@ public class SocketTest {
     }
 
     @Test
-    public void streamSocketTest() throws Throwable {
+    public void streamSocketTest() throws UnixException {
         int fd = (int) socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
         assertTrue(fd > 0);
         closeStrict(fd);
     }
 
     @Test 
-    public void bindTest() throws Throwable {
+    public void bindTest() throws UnixException, UnknownHostException {
         int fd = (int) socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
         Inet4Address localhost = (Inet4Address) InetAddress.getByName("127.0.0.1");
         int port = 8080;
@@ -51,7 +52,7 @@ public class SocketTest {
     }
 
     @Test
-    public void sockOptTest() throws Throwable {
+    public void sockOptTest() throws UnixException {
         int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
         setSockOpt(fd, SOL_SOCKET, SO_REUSEADDR, 1);
         int optval = getSockOpt(fd, SOL_SOCKET, SO_REUSEADDR);
@@ -61,7 +62,7 @@ public class SocketTest {
     }
 
     @Test
-    public void listenTest() throws Throwable {
+    public void listenTest() throws UnixException, UnknownHostException {
         int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
         setReuseAddrPort(fd);
         Inet4Address localhost = (Inet4Address) InetAddress.getByName("127.0.0.1");
@@ -74,7 +75,7 @@ public class SocketTest {
     }
 
     @Test
-    public void connectTest() throws Throwable {
+    public void connectTest() throws UnixException, UnknownHostException {
         int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
         setReuseAddrPort(fd);
         Inet4Address localhost =(Inet4Address) InetAddress.getByName("127.0.0.1");
@@ -92,7 +93,7 @@ public class SocketTest {
     }
 
     @Test
-    public void socketShutdownTest() throws Throwable {
+    public void socketShutdownTest() throws UnixException, UnknownHostException {
         int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
         setReuseAddrPort(fd);
         Inet4Address localhost =(Inet4Address) InetAddress.getByName("127.0.0.1");
@@ -112,7 +113,7 @@ public class SocketTest {
     }
 
     @Test
-    public void ipv6Test() throws Throwable {
+    public void ipv6Test() throws UnixException, UnknownHostException {
         int fd = socket(AF_INET6, SOCK_STREAM | SOCK_CLOEXEC, 0);
         setReuseAddrPort(fd);
         Inet6Address loopback =(Inet6Address) InetAddress.getByName("::1");
@@ -132,7 +133,7 @@ public class SocketTest {
     }
 
     @Test
-    public void errorInProgressTest() throws Throwable {
+    public void errorInProgressTest() throws UnixException, UnknownHostException {
         int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
         MemorySegment addr = sockAddrInet4((Inet4Address) InetAddress.getByName("127.0.0.1"), 8085, arena);
         bind(fd, addr, SOCKADDR_IN_SIZE);
@@ -149,7 +150,7 @@ public class SocketTest {
         closeStrict(clientFd);
     }
 
-    private void setReuseAddrPort(int fd) throws Throwable {
+    private void setReuseAddrPort(int fd) throws UnixException {
         setSockOpt(fd, SOL_SOCKET, SO_REUSEADDR, 1);
         setSockOpt(fd, SOL_SOCKET, SO_REUSEPORT, 1);
     }

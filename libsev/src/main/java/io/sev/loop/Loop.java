@@ -21,5 +21,7 @@ public abstract class Loop<L extends Loop<L, T>, T extends Completion<L, T>> {
     public abstract void enqueue(T completion);
 
     public abstract void cancel(T completion, Callback<L, T> callback);
+
+    public abstract void timer(long ns, Object context, Callback<L, T> callback);
     
 }

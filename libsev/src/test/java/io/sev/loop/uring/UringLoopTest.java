@@ -22,6 +22,7 @@ import io.sev.Native;
 import io.sev.loop.Callback;
 import io.sev.loop.Operation;
 import io.sev.util.inet.InetUtil;
+import io.sev.util.unix.UnixException;
 
 public class UringLoopTest {
 
@@ -39,7 +40,7 @@ public class UringLoopTest {
     }
 
     @Test
-    public void uringLoopTest() throws Throwable {
+    public void uringLoopTest() throws UnixException {
 
         int serverFd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
         setSockOpt(serverFd, SOL_SOCKET, SO_REUSEADDR, 1);
@@ -91,7 +92,7 @@ public class UringLoopTest {
 
         loop.enqueue(acceptCompletion);
         loop.enqueue(connectCompletion);
-        loop.runForNs(50_000_000L);
+        loop.runForNs(10_000_000L);
 
         assertTrue(accepted.get());
         assertTrue(connected.get());
@@ -161,6 +162,16 @@ public class UringLoopTest {
         loop.enqueue(nopCompletion);
         loop.runAll();
         assertEquals(1000L, nopsFinished.get());
+
+        AtomicBoolean timedOut = new AtomicBoolean(false);
+        Callback<UringLoop, UringCompletion> timeoutCallback = (ctx, l, completion, result) -> {
+            assertEquals(-ETIME, result);
+            timedOut.set(true);
+            return false;
+        };
+        loop.timer(1_000_000L, null, timeoutCallback);
+        loop.runAll();
+        assertTrue(timedOut.get());
 
         loop.deinit();
         System.out.println("URING LOOP TEST");

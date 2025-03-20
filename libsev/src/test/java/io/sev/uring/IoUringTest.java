@@ -24,6 +24,7 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
 import io.sev.util.inet.InetUtil;
 import io.sev.util.timer.TimespecUtil;
 import io.sev.util.unix.Macros;
+import io.sev.util.unix.UnixException;
 
 @TestInstance(Lifecycle.PER_CLASS)
 public class IoUringTest {
@@ -45,7 +46,7 @@ public class IoUringTest {
     }
 
     @Test
-    public void uringSocketTest() throws Throwable {
+    public void uringSocketTest() throws UnixException, InterruptedException {
         IoUring ring = IoUring.init(arena);
         assertTrue(ring.ringAddress() > 0);
 
@@ -167,7 +168,7 @@ public class IoUringTest {
     }
 
     @Test
-    public void uringOneHundredNopTest() throws Throwable {
+    public void uringOneHundredNopTest() throws UnixException, InterruptedException {
         IoUring ring = IoUring.init(arena);
         for(int i = 1; i <= 100; i++) {
             long sqe = ring.getSqe();
@@ -194,7 +195,7 @@ public class IoUringTest {
     }
 
     @Test
-    public void uringTimeoutTest() throws Throwable {
+    public void uringTimeoutTest() throws UnixException {
         IoUring ring = IoUring.init(arena);
         long sqe = ring.getSqe();
         IoUring.sqeSetData64(sqe, 42L);

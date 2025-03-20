@@ -11,7 +11,7 @@ public final class UringCompletion extends Completion<UringLoop, UringCompletion
 
     private static final Random random = new Random();
 
-    final long id = random.nextLong();
+    volatile long id = random.nextLong();
 
     public UringCompletion(Operation operation, Object context, Callback<UringLoop, UringCompletion> callback) {
         super(operation, context, callback);
@@ -20,11 +20,15 @@ public final class UringCompletion extends Completion<UringLoop, UringCompletion
     public UringCompletion() {
     }
 
+    public void rollId() {
+        id = random.nextLong();
+    }
+
     public static UringCompletion of(Operation operation, Object context, Callback<UringLoop, UringCompletion> callback) {
         return new UringCompletion(operation, context, callback);
     }
 
-    void prep(long sqe) throws Throwable {
+    void prep(long sqe) {
         IoUring.sqeSetData64(sqe, id);
         switch(operation.op) {
             case ACCEPT:

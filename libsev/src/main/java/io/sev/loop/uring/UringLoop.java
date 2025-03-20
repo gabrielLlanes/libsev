@@ -34,26 +34,18 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
 
     private final MemorySegment cqes = callocator.allocate(IO_URING_CQE_LAYOUT, NCQES);
 
-    private UringLoop() {
-        try {
+    private UringLoop() throws UnixException {
             ring = IoUring.init(callocator);
-        } catch(Throwable t) {
-            throw new RuntimeException(t);
-        }
     }
 
-    public static UringLoop init() {
+    public static UringLoop init() throws UnixException {
         return new UringLoop();
     }
 
     public void deinit() {
-        try {
-            free(cqes);
-            ring.queueExit();
-            free(ring.ringAddress());
-        } catch(Throwable t) {
-            throw new RuntimeException(t);
-        }
+        free(cqes);
+        ring.queueExit();
+        free(ring.ringAddress());
     }
 
     @Override
@@ -62,8 +54,8 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
             while(active > 0 || !unqueuedCompletions.isEmpty()) {
                 flush(1, null, null);
             }
-        } catch(Throwable t) {
-            throw new RuntimeException(t);
+        } catch(UnixException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
@@ -73,26 +65,25 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
             if(active > 0 || !unqueuedCompletions.isEmpty()) {
                 flush(1, null, null);
             }
-        } catch(Throwable t) {
-            throw new RuntimeException(t);
+        } catch(UnixException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
     @Override
     public void enqueue(UringCompletion completion) {
-        try {
-            long sqe = ring.getSqe();
-            if(sqe == 0L) {
-                //no space in submission queue, put in unqueued for now
-                unqueuedCompletions.offer(completion);
-                return;
-            }
-            completion.prep(sqe);
-            inUring.put(completion.id, completion);
-            active++;
-        } catch(Throwable t) {
-            throw new RuntimeException(t);
+        long sqe = ring.getSqe();
+        if(sqe == 0L) {
+            //no space in submission queue, put in unqueued for now
+            unqueuedCompletions.offer(completion);
+            return;
         }
+        completion.prep(sqe);
+        while(inUring.containsKey(completion.id)) {
+            completion.rollId();
+        }
+        inUring.put(completion.id, completion);
+        active++;
     }
 
     @Override
@@ -102,11 +93,29 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
         enqueue(cancelCompletion);
     }
 
-    public void runForNs(long nanoseconds) {
+    @Override
+    public void timer(long ns, Object context,
+            Callback<UringLoop, UringCompletion> callback) {
+        MemorySegment nextTs = timespecNext(ns, callocator);
+        Operation timerOperation = new Operation.Timer()
+                                .ts(nextTs)
+                                .count(0)
+                                .flags(IORING_TIMEOUT_ABS);
+        Callback<UringLoop, UringCompletion> timerCallback = (ctx, loop, completion, result) -> {
+            free(nextTs);
+            callback.invoke(ctx, loop, completion, result);
+            return false;
+        };
+        UringCompletion timerCompletion = new UringCompletion()
+                                            .operation(timerOperation)
+                                            .context(context)
+                                            .callback(timerCallback);
+        enqueue(timerCompletion);
+    }
+
+    public void runForNs(long ns) {
         try {
-            MemorySegment currentTs = callocator.allocate(TIMESPEC_LAYOUT);
-            clockGetTime(CLOCK_MONOTONIC, currentTs);
-            MemorySegment timeoutTs = timespec(getTvSec(currentTs), getTvNsec(currentTs) + nanoseconds, callocator);
+            MemorySegment timeoutTs = timespecNext(ns, callocator);
 
             LongWrapper timeouts = LongWrapper.of(0L);
             BooleanWrapper etime = BooleanWrapper.of(false);
@@ -119,7 +128,7 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
                         throw new RuntimeException();
                     }
                 }
-            IoUring.prepTimeout(timeoutSqe, timeoutTs, 0, Macros.IORING_TIMEOUT_ABS);
+            IoUring.prepTimeout(timeoutSqe, timeoutTs, 0, IORING_TIMEOUT_ABS);
             IoUring.sqeSetData64(timeoutSqe, 0L);
             timeouts.increment();
 
@@ -130,10 +139,9 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
             while(timeouts.value() > 0L) {
                 flushCompletions(0, timeouts, etime);
             }
-            free(currentTs);
             free(timeoutTs);
-        } catch(Throwable t) {
-            throw new RuntimeException(t);
+        } catch(UnixException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
@@ -146,13 +154,13 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
         }
     }
 
-    private void flush(int waitNr, LongWrapper timeouts, BooleanWrapper etime) throws Throwable {
+    private void flush(int waitNr, LongWrapper timeouts, BooleanWrapper etime) throws UnixException {
         flushSubmissions(waitNr, timeouts, etime);
         flushCompletions(0, timeouts, etime);
         enqueueUnqueued();
     }
     
-    private void flushCompletions(int waitNr, LongWrapper timeouts, BooleanWrapper etime) throws Throwable {
+    private void flushCompletions(int waitNr, LongWrapper timeouts, BooleanWrapper etime) throws UnixException {
         int waitRemaining = waitNr;
         while(true) {
             int completed = 0;
@@ -201,7 +209,7 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
         }
     }
 
-    private void flushSubmissions(int waitNr, LongWrapper timeouts, BooleanWrapper etime) throws Throwable {
+    private void flushSubmissions(int waitNr, LongWrapper timeouts, BooleanWrapper etime) throws UnixException {
         while(true) {
             try {
                 ring.submitAndWait(waitNr);

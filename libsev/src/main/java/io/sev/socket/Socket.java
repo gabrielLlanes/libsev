@@ -12,6 +12,7 @@ import static io.sev.util.unix.UnixException.unixException;
 import static java.lang.foreign.ValueLayout.ADDRESS;
 
 import io.sev.Native;
+import io.sev.util.unix.UnixException;
 
 public class Socket {
 
@@ -73,68 +74,76 @@ public class Socket {
         setSockOptHandle = linker.downcallHandle(setSockOptSegment, setSockOptDescriptor);
     }
 
-    public static int socket(int domain, int type, int protocol) throws Throwable {
-        int res = (int) socketHandle.invokeExact(domain, type, protocol);
+    private static Object invokeWithArgumentsUnchecked(MethodHandle handle, Object... args) {
+        Object result = null;
+        try {
+            result = handle.invokeWithArguments(args);
+            return result;
+        } catch(Throwable t) {
+            throw new RuntimeException(t);
+        }
+    }
+
+    public static int socket(int domain, int type, int protocol) throws UnixException {
+        int res = (int) invokeWithArgumentsUnchecked(socketHandle, domain, type, protocol);
         if(res < 0) {
             unixException(res);
         }
         return res;
     }
 
-    public static void bind(int fd, MemorySegment addr, int len) throws Throwable {
-        int res = (int) bindHandle.invokeExact(fd, addr, len);
+    public static void bind(int fd, MemorySegment addr, int len) throws UnixException {
+        int res = (int) invokeWithArgumentsUnchecked(bindHandle, fd, addr, len);
         if(res < 0) {
             unixException(res);
         }
     }
 
-    public static void closeStrict(int fd) throws Throwable {
-        int res = (int) closeHandle.invokeExact(fd);
+    public static void closeStrict(int fd) throws UnixException {
+        int res = (int) invokeWithArgumentsUnchecked(closeHandle, fd);
         if(res < 0) {
             unixException(res);
         }
     }
 
     public static void close(int fd) {
-        try {
-            closeHandle.invokeExact(fd);
-        } catch(Throwable t) {}
+        invokeWithArgumentsUnchecked(closeHandle, fd);
     }
 
-    public static void listen(int fd, int backlog) throws Throwable {
-        int res = (int) listenHandle.invokeExact(fd, backlog);
+    public static void listen(int fd, int backlog) throws UnixException {
+        int res = (int) invokeWithArgumentsUnchecked(listenHandle, fd, backlog);
         if(res < 0) {
             unixException(res);
         }
     }
 
-    public static void connect(int fd, MemorySegment addr, int len) throws Throwable {
-        int res = (int) connectHandle.invokeExact(fd, addr, len);
+    public static void connect(int fd, MemorySegment addr, int len) throws UnixException {
+        int res = (int) invokeWithArgumentsUnchecked(connectHandle, fd, addr, len);
         if(res < 0) {
             unixException(res);
         }
     }
 
-    public static void shutdownSocket(int fd, boolean read, boolean write) throws Throwable {
-        int res = (int) shutdownSocketHandle.invokeExact(fd, read, write);
+    public static void shutdownSocket(int fd, boolean read, boolean write) throws UnixException {
+        int res = (int) invokeWithArgumentsUnchecked(shutdownSocketHandle, fd, read, write);
         if(res < 0) {
             unixException(res);
         }
     }
 
-    public static void shutdownSocket(int fd) throws Throwable {
+    public static void shutdownSocket(int fd) throws UnixException {
         shutdownSocket(fd, true, true);
     }
 
-    public static void setSockOpt(int fd, int level, int optname, int optval) throws Throwable {
-        int res = (int) setSockOptHandle.invokeExact(fd, level, optname, optval);
+    public static void setSockOpt(int fd, int level, int optname, int optval) throws UnixException {
+        int res = (int) invokeWithArgumentsUnchecked(setSockOptHandle, fd, level, optname, optval);
         if(res < 0) {
             unixException(res);
         }
     }
 
-    public static int getSockOpt(int fd, int level, int optname) throws Throwable {
-        int res = (int) getSockOptHandle.invokeExact(fd, level, optname);
+    public static int getSockOpt(int fd, int level, int optname) throws UnixException {
+        int res = (int) invokeWithArgumentsUnchecked(getSockOptHandle, fd, level, optname);
         if(res < 0) {
             unixException(res);
         }

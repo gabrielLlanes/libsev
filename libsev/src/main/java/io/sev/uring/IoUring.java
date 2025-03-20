@@ -8,6 +8,7 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
 
 import io.sev.Native;
+import io.sev.util.unix.UnixException;
 
 import static io.sev.util.unix.UnixException.unixException;
 import static java.lang.foreign.ValueLayout.ADDRESS;
@@ -167,121 +168,139 @@ public class IoUring {
     
     private final long ringAddress;
 
-    private IoUring(int entries, SegmentAllocator allocator) throws Throwable {
+    private IoUring(int entries, SegmentAllocator allocator) throws UnixException {
         MemorySegment ring = allocator.allocate(STRUCT_IO_URING_SIZE);
         this.ringAddress = ring.address();
         init(entries, ring.address(), 0);
+    }
+
+    private static Object invokeWithArgumentsUnchecked(MethodHandle handle, Object... args) {
+        Object result = null;
+        try {
+            result = handle.invokeWithArguments(args);
+            return result;
+        } catch(Throwable t) {
+            throw new RuntimeException(t);
+        }
+    }
+
+    private static void invokeWithArgumentsVoidUnchecked(MethodHandle handle, Object... args) {
+        try {
+            handle.invokeWithArguments(args);
+        } catch(Throwable t) {
+            throw new RuntimeException(t);
+        }
     }
 
     public long ringAddress() {
         return ringAddress;
     }
 
-    private static void init(int entries, long ringAddress, int flags) throws Throwable {
-        int res = (int) queueInitHandle.invokeExact(entries, ringAddress, flags);
+    private static void init(int entries, long ringAddress, int flags) throws UnixException {
+        int res = (int) invokeWithArgumentsUnchecked(queueInitHandle, entries, ringAddress, flags);
         if(res < 0) {
             unixException(res);
         }
     }
 
-    public static IoUring init(SegmentAllocator allocator) throws Throwable {
+    public static IoUring init(SegmentAllocator allocator) throws UnixException {
         return new IoUring(DEFAULT_ENTRIES, allocator);
     }
 
-    public static void sqeSetData64(long sqe, long data) throws Throwable {
-        sqeSetData64Handle.invokeExact(sqe, data);
+    public static void sqeSetData64(long sqe, long data) {
+        invokeWithArgumentsVoidUnchecked(sqeSetData64Handle, sqe, data);
     }
 
-    public static void sqeSetData(long sqe, long data) throws Throwable {
-        sqeSetDataHandle.invokeExact(sqe, data);
+    public static void sqeSetData(long sqe, long data) {
+        invokeWithArgumentsVoidUnchecked(sqeSetDataHandle, sqe, data);
     }
 
-    public static void sqeSetFlags(long sqe, int flags) throws Throwable {
-        sqeSetFlagsHandle.invokeExact(sqe, flags);
+    public static void sqeSetFlags(long sqe, int flags) {
+        invokeWithArgumentsVoidUnchecked(sqeSetFlagsHandle, sqe, flags);
     }
 
-    public static void prepNop(long sqe) throws Throwable {
-        prepNopHandle.invokeExact(sqe);
+    public static void prepNop(long sqe) {
+        invokeWithArgumentsVoidUnchecked(prepNopHandle, sqe);
     }
 
-    public static void prepAccept(long sqe, int sockfd, MemorySegment addr, MemorySegment addrlen, int flags, boolean multishot) throws Throwable {
-        prepAcceptHandle.invokeExact(sqe, sockfd, addr, addrlen, flags, multishot);
+    public static void prepAccept(long sqe, int sockfd, MemorySegment addr, MemorySegment addrlen, int flags, boolean multishot) {
+        invokeWithArgumentsVoidUnchecked(prepAcceptHandle, sqe, sockfd, addr, addrlen, flags, multishot);
     }
 
-    public static void prepConnect(long sqe, int sockfd, MemorySegment addr, int addrlen) throws Throwable {
-        prepConnectHandle.invokeExact(sqe, sockfd, addr, addrlen);
+    public static void prepConnect(long sqe, int sockfd, MemorySegment addr, int addrlen) {
+        invokeWithArgumentsVoidUnchecked(prepConnectHandle, sqe, sockfd, addr, addrlen);
     }
 
-    public static void prepClose(long sqe, int fd) throws Throwable {
-        prepCloseHandle.invokeExact(sqe, fd);
+    public static void prepClose(long sqe, int fd) {
+        invokeWithArgumentsVoidUnchecked(prepCloseHandle, sqe, fd);
     }
 
-    public static void prepShutdown(long sqe, int sockfd, int how) throws Throwable {
-        prepShutdownHandle.invokeExact(sqe, sockfd, how);
+    public static void prepShutdown(long sqe, int sockfd, int how) {
+        invokeWithArgumentsVoidUnchecked(prepShutdownHandle, sqe, sockfd, how);
     }
 
-    public static void prepRead(long sqe, int fd, MemorySegment buf, int nbytes, long offset) throws Throwable {
-        prepReadHandle.invokeExact(sqe, fd, buf, nbytes, offset);
+    public static void prepRead(long sqe, int fd, MemorySegment buf, int nbytes, long offset) {
+        invokeWithArgumentsVoidUnchecked(prepReadHandle, sqe, fd, buf, nbytes, offset);
     }
 
-    public static void prepWrite(long sqe, int fd, MemorySegment buf, int nbytes, long offset) throws Throwable {
-        prepWriteHandle.invokeExact(sqe, fd, buf, nbytes, offset);
+    public static void prepWrite(long sqe, int fd, MemorySegment buf, int nbytes, long offset) {
+        invokeWithArgumentsVoidUnchecked(prepWriteHandle, sqe, fd, buf, nbytes, offset);
     }
 
-    public static void prepRecv(long sqe, int sockfd, MemorySegment buf, long len, int flags) throws Throwable {
-        prepRecvHandle.invokeExact(sqe, sockfd, buf, len, flags);
+    public static void prepRecv(long sqe, int sockfd, MemorySegment buf, long len, int flags) {
+        invokeWithArgumentsVoidUnchecked(prepRecvHandle, sqe, sockfd, buf, len, flags);
     }
 
-    public static void prepSend(long sqe, int sockfd, MemorySegment buf, long len, int flags) throws Throwable {
-        prepSendHandle.invokeExact(sqe, sockfd, buf, len, flags);
+    public static void prepSend(long sqe, int sockfd, MemorySegment buf, long len, int flags) {
+        invokeWithArgumentsVoidUnchecked(prepSendHandle, sqe, sockfd, buf, len, flags);
     }
 
-    public static void prepTimeout(long sqe, MemorySegment ts, int count, int flags) throws Throwable {
-        prepTimeoutHandle.invokeExact(sqe, ts, count, flags);
+    public static void prepTimeout(long sqe, MemorySegment ts, int count, int flags) {
+        invokeWithArgumentsVoidUnchecked(prepTimeoutHandle, sqe, ts, count, flags);
     }
 
-    public static void prepPollAdd(long sqe, int fd, int poll_mask) throws Throwable {
-        prepPollAddHandle.invokeExact(sqe, fd, poll_mask);
+    public static void prepPollAdd(long sqe, int fd, int poll_mask) {
+        invokeWithArgumentsVoidUnchecked(prepPollAddHandle, sqe, fd, poll_mask);
     }
 
-    public static void prepCancel64(long sqe, long user_data, int flags) throws Throwable {
-        prepCancel64Handle.invokeExact(sqe, user_data, flags);
+    public static void prepCancel64(long sqe, long user_data, int flags) {
+        invokeWithArgumentsVoidUnchecked(prepCancel64Handle, sqe, user_data, flags);
     }
 
-    public static void prepCancel(long sqe, long user_data, int flags) throws Throwable {
-        prepCancelHandle.invokeExact(sqe, user_data, flags);
+    public static void prepCancel(long sqe, long user_data, int flags) {
+        invokeWithArgumentsVoidUnchecked(prepCancelHandle, sqe, user_data, flags);
     }
 
-    public long getSqe() throws Throwable {
-        return (long) getSqeHandle.invokeExact(ringAddress);
+    public long getSqe() {
+        return (long) invokeWithArgumentsUnchecked(getSqeHandle, ringAddress);
     }
 
-    public int submit() throws Throwable {
-        int res = (int) submitHandle.invokeExact(ringAddress);
+    public int submit() throws UnixException {
+        int res = (int) invokeWithArgumentsUnchecked(submitHandle, ringAddress);
         if(res < 0) {
             unixException(res);
         }
         return res;
     }
 
-    public int submitAndWait(int wait_nr) throws Throwable {
-        int res = (int) submitAndWaitHandle.invokeExact(ringAddress, wait_nr);
+    public int submitAndWait(int wait_nr) throws UnixException {
+        int res = (int) invokeWithArgumentsUnchecked(submitAndWaitHandle, ringAddress, wait_nr);
         if(res < 0) {
             unixException(res);
         }
         return res;
     }
 
-    public int copyCqes(MemorySegment cqes, int cqeslen, int waitnr) throws Throwable {
-        int res = (int) copyCqesHandle.invokeExact(ringAddress, cqes, cqeslen, waitnr);
+    public int copyCqes(MemorySegment cqes, int cqeslen, int waitnr) throws UnixException {
+        int res = (int) invokeWithArgumentsUnchecked(copyCqesHandle, ringAddress, cqes, cqeslen, waitnr);
         if(res < 0) {
             unixException(res);
         }
         return res;
     }
 
-    public void queueExit() throws Throwable {
-        queueExitHandle.invokeExact(ringAddress);
+    public void queueExit() {
+        invokeWithArgumentsVoidUnchecked(queueExitHandle, ringAddress);
     }
 
 
