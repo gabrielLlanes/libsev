@@ -133,13 +133,13 @@ static int cq_ring_needs_flush(struct io_uring *ring) {
     return IO_URING_READ_ONCE(*ring->sq.kflags) & (IORING_SQ_CQ_OVERFLOW);
 }
 
-//inspired by implementation of zig implementation in std.os.linux.IoUring.cope_cqes()
+//inspired by implementation of zig implementation in std.os.linux.IoUring.copy_cqes()
 int sev_uring_copyCqes(long ring, struct io_uring_cqe *cqes, uint32_t cqes_len, uint32_t wait_nr) {
     uint32_t count = copy_cqes_ready((struct io_uring *) ring, cqes, cqes_len);
     if(count > 0) {
         return count;
     }
-    if(cq_ring_needs_flush(ring) || wait_nr > 0) {
+    if(cq_ring_needs_flush((struct io_uring *) ring) || wait_nr > 0) {
         int enter = io_uring_enter(((struct io_uring *) ring)->ring_fd, 0, wait_nr, IORING_ENTER_GETEVENTS, NULL);
         if(enter < 0) {
             return enter;
