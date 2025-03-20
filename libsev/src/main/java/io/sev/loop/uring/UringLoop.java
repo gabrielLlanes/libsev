@@ -4,15 +4,12 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Queue;
 
 import io.sev.Native;
 import io.sev.loop.Callback;
 import io.sev.loop.Loop;
 import io.sev.loop.Operation;
-import io.sev.queue.IntrusiveQueue;
 import io.sev.uring.IoUring;
-import io.sev.util.unix.Macros;
 import io.sev.util.unix.UnixException;
 import io.sev.util.value.BooleanWrapper;
 import io.sev.util.value.LongWrapper;
@@ -72,18 +69,30 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
 
     @Override
     public void enqueue(UringCompletion completion) {
+        tryEnqueuePrep(completion, false);
+    }
+
+    private boolean tryEnqueuePrep(UringCompletion completion, boolean offerFirst) {
+        if(completion == null) {
+            return false;
+        }
         long sqe = ring.getSqe();
         if(sqe == 0L) {
             //no space in submission queue, put in unqueued for now
-            unqueuedCompletions.offer(completion);
-            return;
+            if(offerFirst) {
+                unqueuedCompletions.offerFirst(completion);
+            } else {
+                unqueuedCompletions.offer(completion);
+            }
+            return false;
         }
-        completion.prep(sqe);
         while(inUring.containsKey(completion.id)) {
             completion.rollId();
         }
+        completion.prep(sqe);
         inUring.put(completion.id, completion);
         active++;
+        return true;
     }
 
     @Override
@@ -146,11 +155,12 @@ public class UringLoop extends Loop<UringLoop, UringCompletion> {
     }
 
     private void enqueueUnqueued() {
-        Queue<UringCompletion> copy = this.unqueuedCompletions;
-        this.unqueuedCompletions = new IntrusiveQueue<>();
         UringCompletion curr = null;
-        while((curr = copy.poll()) != null) {
-            enqueue(curr);
+        while(true) {
+            curr = this.unqueuedCompletions.poll();
+            if(!tryEnqueuePrep(curr, true)) {
+                break;
+            }
         }
     }
 

@@ -15,6 +15,12 @@ public class IntrusiveQueue<T extends IntrusiveQueue.Element<T>> extends Abstrac
 
     public IntrusiveQueue() {}
 
+    public static abstract class Element<E> {
+        E next = null;
+        E prev = null;
+        protected Element() {}
+    }
+
     @Override
     public boolean offer(T el) {
         Objects.requireNonNull(el);
@@ -23,7 +29,22 @@ public class IntrusiveQueue<T extends IntrusiveQueue.Element<T>> extends Abstrac
             tail = el;
         } else {
             tail.next = el;
+            el.prev = tail;
             tail = el;
+        }
+        size++;
+        return true;
+    }
+
+    public boolean offerFirst(T el) {
+        Objects.requireNonNull(el);
+        if(head == null) {
+            head = el;
+            tail = el;
+        } else {
+            head.prev = el;
+            el.next = head;
+            head = el;
         }
         size++;
         return true;
@@ -37,9 +58,27 @@ public class IntrusiveQueue<T extends IntrusiveQueue.Element<T>> extends Abstrac
         T el = head;
         if(head == tail) {
             tail = null;
+        } else {
+            head.next.prev = null;
         }
         head = head.next;
         el.next = null;
+        size--;
+        return el;
+    }
+
+    public T pollLast() {
+        if(tail == null) {
+            return null;
+        }
+        T el = tail;
+        if(head == tail) {
+            head = null;
+        } else {
+            tail.prev.next = null;
+        }
+        tail = tail.prev;
+        el.prev = null;
         size--;
         return el;
     }
@@ -52,11 +91,6 @@ public class IntrusiveQueue<T extends IntrusiveQueue.Element<T>> extends Abstrac
     @Override
     public int size() {
         return size;
-    }
-
-    public static abstract class Element<E> {
-        E next = null;
-        protected Element() {}
     }
 
     @Override

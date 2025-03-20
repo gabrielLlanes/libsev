@@ -1,7 +1,5 @@
 package io.sev.loop;
 
-import java.util.Queue;
-
 import io.sev.queue.IntrusiveQueue;
 
 
@@ -9,7 +7,7 @@ public abstract class Loop<L extends Loop<L, T>, T extends Completion<L, T>> {
 
     protected long active = 0;
 
-    protected Queue<T> unqueuedCompletions = new IntrusiveQueue<>();
+    protected IntrusiveQueue<T> unqueuedCompletions = new IntrusiveQueue<>();
 
     protected Loop() {
     }
